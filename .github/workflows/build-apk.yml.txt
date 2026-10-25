@@ -1,0 +1,49 @@
+
+name: Build and Release APK
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggas automatiskt när du skapar en tagg som börjar på v (t.ex. v1.0.0)
+  workflow_dispatch: # Gör att du även kan klicka "Run workflow" manuellt i GitHub
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Sync Capacitor & Android
+        run: |
+          npx cap add android || true
+          npx cap sync android
+
+      - name: Build Debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Create Release & Upload APK
+        uses: softprops/action-gh-release@v1
+        with:
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
