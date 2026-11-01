@@ -1,24 +1,16 @@
 {
-  "appId": "com.example.tidsrapport",
-  "appName": "Tidsrapportering",
-  "webDir": "www",
-  "bundledWebRuntime": false
-}
   "name": "tidsrapportering",
-  "version": "5.12.0",
-  "description": "Tidsrapportering & Avancerad Prissättning PWA/App",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Tidrapportering och transportapp",
   "scripts": {
-    "build": "echo 'No build step required for static www files'"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "@capacitor/android": "^6.0.0",
-    "@capacitor/core": "^6.0.0",
-    "@capacitor/filesystem": "^6.0.0",
-    "@capacitor/local-notifications": "^6.0.0",
-    "@capacitor/app": "^6.0.0"
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/core": "^5.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^6.0.0"
+    "@capacitor/cli": "^5.0.0"
   }
 }
-
