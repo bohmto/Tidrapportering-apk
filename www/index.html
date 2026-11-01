@@ -2348,8 +2348,46 @@
     }
 
     async function saveOrShareFile(content, filename, mimeType) {
-      const file = new File([content], filename, { type: mimeType });
+      const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
 
+      if (isNative) {
+        try {
+          const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins.Filesystem;
+          const { Share } = window.Capacitor.Plugins;
+
+          let writeData = content;
+          let isBase64 = false;
+
+          if (content instanceof ArrayBuffer || ArrayBuffer.isView(content)) {
+            const bytes = new Uint8Array(content);
+            let binary = '';
+            for (let i = 0; i < bytes.byteLength; i++) {
+              binary += String.fromCharCode(bytes[i]);
+            }
+            writeData = btoa(binary);
+            isBase64 = true;
+          }
+
+          const savedFile = await Filesystem.writeFile({
+            path: filename,
+            data: writeData,
+            directory: Directory.Documents,
+            ...(isBase64 ? {} : { encoding: Encoding.UTF8 })
+          });
+
+          await Share.share({
+            title: filename,
+            text: 'Här är din exportfil från Tidsrapportering',
+            url: savedFile.uri,
+            dialogTitle: 'Spara eller dela fil'
+          });
+          return;
+        } catch (err) {
+          console.warn('Capacitor native save/share misslyckades, fallar tillbaka:', err);
+        }
+      }
+
+      const file = new File([content], filename, { type: mimeType });
       if ('showSaveFilePicker' in window) {
         try {
           const ext = '.' + filename.split('.').pop();
