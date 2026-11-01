@@ -1,4 +1,9 @@
 {
+  "appId": "com.example.tidsrapport",
+  "appName": "Tidsrapportering",
+  "webDir": "www",
+  "bundledWebRuntime": false
+}
   "name": "tidsrapportering",
   "version": "5.12.0",
   "description": "Tidsrapportering & Avancerad Prissättning PWA/App",
