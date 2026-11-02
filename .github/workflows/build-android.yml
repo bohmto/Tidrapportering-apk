@@ -20,22 +20,34 @@ jobs:
       - name: Installera beroenden
         run: npm install
 
-      - name: Skapa Android-plattform och synka Capacitor
-        run: |
-          npx cap add android
-          npx cap sync android
-
       - name: Konfigurera Java JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Cacha Gradle-filer
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Synka Capacitor och förbered Android
+        run: |
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
       - name: Bygg Debug APK med Gradle
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Ladda upp APK som artefakt
         uses: actions/upload-artifact@v4
