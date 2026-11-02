@@ -2371,7 +2371,7 @@
           const savedFile = await Filesystem.writeFile({
             path: filename,
             data: writeData,
-            directory: Directory.Documents,
+            directory: Directory.Cache,
             ...(isBase64 ? {} : { encoding: Encoding.UTF8 })
           });
 
