@@ -2347,67 +2347,65 @@
       updateTimerUI();
     }
 
-    // --- UPPDATERAD saveOrShareFile MED CAPACITOR NATIVE SHARE (ALTERNATIV 1) ---
+    // --- UPPDATERAD saveOrShareFile MED CAPACITOR FILESYSTEM & SHARE / FALLBACK ---
     async function saveOrShareFile(content, filename, mimeType) {
-      const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+      try {
+        console.log("Kör saveOrShareFile för:", filename);
 
-      if (isNative) {
-        try {
-          const { Filesystem, Directory, Encoding } = window.Capacitor.Plugins.Filesystem;
-          const { Share } = window.Capacitor.Plugins;
-
-          let writeData = content;
-          let isBase64 = false;
-
-          if (content instanceof ArrayBuffer || ArrayBuffer.isView(content)) {
-            const bytes = new Uint8Array(content);
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            writeData = btoa(binary);
-            isBase64 = true;
-          } else if (typeof content === 'string') {
-            const bytes = new TextEncoder().encode(content);
-            let binary = '';
-            for (let i = 0; i < bytes.byteLength; i++) {
-              binary += String.fromCharCode(bytes[i]);
-            }
-            writeData = btoa(binary);
-            isBase64 = true;
+        // Konvertera innehåll till Base64
+        let base64Data = '';
+        if (content instanceof ArrayBuffer || ArrayBuffer.isView(content)) {
+          const bytes = new Uint8Array(content);
+          let binary = '';
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
           }
+          base64Data = btoa(binary);
+        } else if (typeof content === 'string') {
+          const bytes = new TextEncoder().encode(content);
+          let binary = '';
+          for (let i = 0; i < bytes.byteLength; i++) {
+            binary += String.fromCharCode(bytes[i]);
+          }
+          base64Data = btoa(binary);
+        }
 
-          // Skriv filen till Cache-katalogen
-          const savedFile = await Filesystem.writeFile({
+        // Kolla om Capacitor och plugins är tillgängliga
+        const capacitor = window.Capacitor;
+        const filesystem = capacitor?.Plugins?.Filesystem;
+        const share = capacitor?.Plugins?.Share;
+
+        if (capacitor && capacitor.isNativePlatform() && filesystem && share) {
+          // 1. Spara till Cache-katalogen
+          const savedFile = await filesystem.writeFile({
             path: filename,
-            data: writeData,
-            directory: Directory.Cache,
-            ...(isBase64 ? {} : { encoding: Encoding.UTF8 })
+            data: base64Data,
+            directory: 'CACHE'
           });
 
-          // Öppna Androids inbyggda delningsmeny (Google Drive, OneDrive, E-post, Spara till enhet m.m.)
-          await Share.share({
+          // 2. Öppna systemets delningsmeny
+          await share.share({
             title: filename,
-            text: 'Här är din sparade fil från Tidsrapportering',
+            text: 'Här är din fil från Tidsrapportering',
             url: savedFile.uri,
             dialogTitle: 'Spara eller dela fil'
           });
           return;
-        } catch (err) {
-          console.warn('Capacitor native save/share misslyckades, fallar tillbaka:', err);
         }
-      }
 
-      // Fallback för vanlig webbläsare / PWA
-      const blob = new Blob([content], { type: mimeType });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+        // Fallback: Data-URI nedladdning om Capacitor-plugins saknas
+        const dataUri = `data:${mimeType};base64,${base64Data}`;
+        const a = document.createElement('a');
+        a.href = dataUri;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+
+      } catch (err) {
+        console.error('Fel i saveOrShareFile:', err);
+        alert('Kunde inte spara filen: ' + err.message);
+      }
     }
 
     function populateCustomerDropdowns() {
