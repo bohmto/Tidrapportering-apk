@@ -1161,7 +1161,7 @@
     }
 
     function checkUpcomingShiftNotifications() {
-      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      if (!('Notification' in window) && (!window.Capacitor || !window.Capacitor.Plugins?.LocalNotifications)) return;
 
       const sched = getScheduleInfo();
       const shifts = sched.calendarShifts || {};
@@ -1193,8 +1193,26 @@
       localStorage.setItem('app_notified_shifts', JSON.stringify(notifiedShifts));
     }
 
-    function showNotification(title, body) {
-      if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+    async function showNotification(title, body) {
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.schedule({
+            notifications: [
+              {
+                title: title,
+                body: body,
+                id: Date.now() % 100000,
+                schedule: { at: new Date(Date.now() + 100) }
+              }
+            ]
+          });
+        } catch (e) {
+          console.error('Kunde inte visa lokal notis via Capacitor:', e);
+        }
+      } else if (navigator.serviceWorker && navigator.serviceWorker.ready) {
         navigator.serviceWorker.ready.then(reg => {
           reg.showNotification(title, {
             body: body,
@@ -1202,7 +1220,7 @@
             vibrate: [200, 100, 200]
           });
         });
-      } else {
+      } else if ('Notification' in window && Notification.permission === 'granted') {
         new Notification(title, { body: body });
       }
     }
@@ -1360,38 +1378,80 @@
     }
 
     async function requestNotificationPermission() {
-      if ('Notification' in window && Notification.permission === 'default') {
-        await Notification.requestPermission();
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        const perm = await localNotifications.requestPermissions();
+        return perm.display === 'granted';
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        const res = await Notification.requestPermission();
+        return res === 'granted';
       }
       checkUpcomingShiftNotifications();
+      return true;
     }
 
-    function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
-      if ('Notification' in window && Notification.permission === 'granted' && navigator.serviceWorker) {
-        navigator.serviceWorker.ready.then(reg => {
-          if (reg.active) {
-            reg.active.postMessage({
-              type: 'UPDATE_SHIFT_NOTIFICATION',
-              title: title,
-              body: body,
-              isRunning: isRunning,
-              isBreak: isBreak,
-              timestamp: startTimeMs || Date.now()
-            });
-          }
-        });
+    async function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.cancel({ notifications: [{ id: 1 }] });
+          await localNotifications.schedule({
+            notifications: [
+              {
+                title: title,
+                body: body,
+                id: 1,
+                ongoing: true,
+                autoCancel: false,
+                channelId: 'active_shift_channel'
+              }
+            ]
+          });
+        } catch (err) {
+          console.error('Kunde inte schemalägga lokal notis via Capacitor:', err);
+        }
+      } else {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'UPDATE_SHIFT_NOTIFICATION',
+                title: title,
+                body: body,
+                isRunning: isRunning,
+                isBreak: isBreak,
+                timestamp: startTimeMs || Date.now()
+              });
+            }
+          });
+        }
       }
     }
 
-    function clearBackgroundNotification() {
-      if ('Notification' in window && navigator.serviceWorker) {
-        navigator.serviceWorker.ready.then(reg => {
-          if (reg.active) {
-            reg.active.postMessage({
-              type: 'CLEAR_NOTIFICATION'
-            });
-          }
-        });
+    async function clearBackgroundNotification() {
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.cancel({ notifications: [{ id: 1 }] });
+        } catch (err) {
+          console.error('Kunde inte rensa lokal notis:', err);
+        }
+      } else {
+        if ('Notification' in window && navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'CLEAR_NOTIFICATION'
+              });
+            }
+          });
+        }
       }
     }
 
