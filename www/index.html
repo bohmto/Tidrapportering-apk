@@ -1398,16 +1398,6 @@
 
       if (capacitor && capacitor.isNativePlatform() && localNotifications) {
         try {
-          // Skapa notiskanal först för att Android ska tillåta visning
-          await localNotifications.createChannel({
-            id: 'active_shift_channel',
-            name: 'Aktiva arbetspass',
-            importance: 4,
-            visibility: 1,
-            sound: 'default',
-            vibration: true
-          });
-
           await localNotifications.cancel({ notifications: [{ id: 1 }] });
           await localNotifications.schedule({
             notifications: [
@@ -1583,12 +1573,9 @@
         }
       }
 
-      if (isRunning) {
-        document.title = `⏱️ ${clockText} - Arbetar`;
-      } else if (isBreak) {
-        document.title = `☕ ${clockText} - Rast`;
-      } else {
-        document.title = `Tidsrapportering & Avancerad Prissättning`;
+      const newTitle = isRunning ? `⏱️ ${clockText} - Arbetar` : (isBreak ? `☕ ${clockText} - Rast` : `Tidsrapportering & Avancerad Prissättning`);
+      if (document.title !== newTitle) {
+        document.title = newTitle;
       }
 
       const iconColor = isRunning ? '#16a34a' : (isBreak ? '#d97706' : '#2563eb');
@@ -2691,6 +2678,29 @@
       }
     });
 
+    let lastSecondText = '';
+
+    function updateAppStatusIndicators(shift, clockText) {
+      const isRunning = shift && shift.status === 'working';
+      const isBreak = shift && shift.status === 'break';
+
+      if ('setAppBadge' in navigator && 'clearAppBadge' in navigator) {
+        if (isRunning || isBreak) {
+          navigator.setAppBadge().catch(() => {});
+        } else {
+          navigator.clearAppBadge().catch(() => {});
+        }
+      }
+
+      const newTitle = isRunning ? `⏱️ ${clockText} - Arbetar` : (isBreak ? `☕ ${clockText} - Rast` : `Tidsrapportering & Avancerad Prissättning`);
+      if (document.title !== newTitle) {
+        document.title = newTitle;
+      }
+
+      const iconColor = isRunning ? '#16a34a' : (isBreak ? '#d97706' : '#2563eb');
+      updateDynamicFavicon(iconColor);
+    }
+
     function updateTimerUI() {
       const shift = getActiveShift();
       const badge = document.getElementById('timer-badge');
@@ -2725,6 +2735,7 @@
         clearBackgroundNotification();
 
         if (timerInterval) clearInterval(timerInterval);
+        lastSecondText = '';
         return;
       }
 
@@ -2778,7 +2789,6 @@
           complianceBox.style.display = 'block';
 
           const workedHours = currentWorkedMs / (1000 * 60 * 60);
-          const totalBreakMins = Math.round((currentShift.breakTimeMs + (currentShift.status === 'break' ? (Date.now() - currentShift.breakStart) : 0)) / (1000 * 60));
 
           if (currentShift.status === 'working') {
             if (periodWorkedHours >= 4.0 && periodWorkedHours < 4.1 && !alarmStateMap['notified_4h']) {
@@ -2822,9 +2832,16 @@
 
         if (currentShift.status === 'working') {
           subtext.innerText = `Startat kl ${startTimeStr} | Nästa rast senast kl ${firstBreakStr}`;
-          topStatusText.innerText = `⏱️ ARBETAR: ${custName} (${clockText}) • Nästa rast senast ${firstBreakStr}`;
+          const newStatusText = `⏱️ ARBETAR: ${custName} (${clockText}) • Nästa rast senast ${firstBreakStr}`;
+          if (topStatusText.innerText !== newStatusText) {
+            topStatusText.innerText = newStatusText;
+          }
           updateAppStatusIndicators(currentShift, clockText);
-          updateBackgroundNotification(`⏱️ Arbetar på ${custName}`, `Startade kl ${startTimeStr} | Nästa rast senast kl ${firstBreakStr}`, true, false, currentShift.startTime);
+
+          if (lastSecondText !== clockText) {
+            lastSecondText = clockText;
+            updateBackgroundNotification(`⏱️ Arbetar på ${custName}`, `Startade kl ${startTimeStr} | Nästa rast senast kl ${firstBreakStr}`, true, false, currentShift.startTime);
+          }
         } else if (currentShift.status === 'break') {
           const elapsedBreakMs = Date.now() - currentShift.breakStart;
           const bSec = Math.floor((elapsedBreakMs / 1000) % 60);
@@ -2832,9 +2849,16 @@
           const breakClockText = String(bMin).padStart(2, '0') + ':' + String(bSec).padStart(2, '0');
           
           subtext.innerText = `På rast sedan ${new Date(currentShift.breakStart).toTimeString().slice(0,5)} (${breakClockText})`;
-          topStatusText.innerText = `☕ RAST: ${custName} (Rast: ${breakClockText})`;
+          const newStatusText = `☕ RAST: ${custName} (Rast: ${breakClockText})`;
+          if (topStatusText.innerText !== newStatusText) {
+            topStatusText.innerText = newStatusText;
+          }
           updateAppStatusIndicators(currentShift, clockText);
-          updateBackgroundNotification(`☕ Rast på ${custName}`, `Rast sedan kl ${new Date(currentShift.breakStart).toTimeString().slice(0,5)}`, true, true, currentShift.breakStart);
+
+          if (lastSecondText !== breakClockText) {
+            lastSecondText = breakClockText;
+            updateBackgroundNotification(`☕ Rast på ${custName}`, `Rast sedan kl ${new Date(currentShift.breakStart).toTimeString().slice(0,5)}`, true, true, currentShift.breakStart);
+          }
         }
       }
 
