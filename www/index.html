@@ -1217,7 +1217,8 @@
           reg.showNotification(title, {
             body: body,
             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%232563eb"/><text x="50" y="68" font-size="55" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">T</text></svg>',
-            vibrate: [200, 100, 200]
+            vibrate: [200, 100, 200],
+            tag: 'reminder-notification' // FIX 1: Unik tagg för påminnelser så de inte krockar med timern
           });
         });
       } else if ('Notification' in window && Notification.permission === 'granted') {
@@ -2549,6 +2550,10 @@
       };
 
       alarmStateMap = {};
+      
+      // FIX 2: Sätt lastNotifiedMinute direkt vid start så tick() inte skickar en dubblett
+      lastNotifiedMinute = new Date().getMinutes();
+
       setActiveShift(shift);
 
       // Tvinga fram notisen i notisfältet omedelbart vid start
