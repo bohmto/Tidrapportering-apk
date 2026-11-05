@@ -1161,75 +1161,67 @@
     }
 
     function checkUpcomingShiftNotifications() {
-      try {
-        if (!('Notification' in window) && (!window.Capacitor || !window.Capacitor.Plugins?.LocalNotifications)) return;
+      if (!('Notification' in window) && (!window.Capacitor || !window.Capacitor.Plugins?.LocalNotifications)) return;
 
-        const sched = getScheduleInfo();
-        const shifts = sched.calendarShifts || {};
-        const notifiedShifts = JSON.parse(localStorage.getItem('app_notified_shifts') || '{}');
-        const now = Date.now();
+      const sched = getScheduleInfo();
+      const shifts = sched.calendarShifts || {};
+      const notifiedShifts = JSON.parse(localStorage.getItem('app_notified_shifts') || '{}');
+      const now = Date.now();
 
-        Object.keys(shifts).forEach(dateStr => {
-          const shift = shifts[dateStr];
-          if (!shift || shift.off) return;
+      Object.keys(shifts).forEach(dateStr => {
+        const shift = shifts[dateStr];
+        if (!shift || shift.off) return;
 
-          const startTime = shift.start || '08:00';
-          const shiftDate = new Date(`${dateStr}T${startTime}:00`);
-          const timeDiffMs = shiftDate.getTime() - now;
-          const hoursLeft = timeDiffMs / (1000 * 60 * 60);
+        const startTime = shift.start || '08:00';
+        const shiftDate = new Date(`${dateStr}T${startTime}:00`);
+        const timeDiffMs = shiftDate.getTime() - now;
+        const hoursLeft = timeDiffMs / (1000 * 60 * 60);
 
-          if (!notifiedShifts[dateStr]) notifiedShifts[dateStr] = {};
+        if (!notifiedShifts[dateStr]) notifiedShifts[dateStr] = {};
 
-          if (hoursLeft > 23.5 && hoursLeft <= 24.5 && !notifiedShifts[dateStr]['24h']) {
-            showNotification(`📅 Påminnelse: Pass imorgon!`, `Du har ett planerat pass (${dateStr} kl. ${startTime}) om 24 timmar.`);
-            notifiedShifts[dateStr]['24h'] = true;
-          }
+        if (hoursLeft > 23.5 && hoursLeft <= 24.5 && !notifiedShifts[dateStr]['24h']) {
+          showNotification(`📅 Påminnelse: Pass imorgon!`, `Du har ett planerat pass (${dateStr} kl. ${startTime}) om 24 timmar.`);
+          notifiedShifts[dateStr]['24h'] = true;
+        }
 
-          if (hoursLeft > 11.5 && hoursLeft <= 12.5 && !notifiedShifts[dateStr]['12h']) {
-            showNotification(`⏳ Påminnelse: Pass om 12 timmar!`, `Ditt pass (${dateStr} kl. ${startTime}) startar om 12 timmar.`);
-            notifiedShifts[dateStr]['12h'] = true;
-          }
-        });
+        if (hoursLeft > 11.5 && hoursLeft <= 12.5 && !notifiedShifts[dateStr]['12h']) {
+          showNotification(`⏳ Påminnelse: Pass om 12 timmar!`, `Ditt pass (${dateStr} kl. ${startTime}) startar om 12 timmar.`);
+          notifiedShifts[dateStr]['12h'] = true;
+        }
+      });
 
-        localStorage.setItem('app_notified_shifts', JSON.stringify(notifiedShifts));
-      } catch (e) {
-        console.error('Fel i checkUpcomingShiftNotifications:', e);
-      }
+      localStorage.setItem('app_notified_shifts', JSON.stringify(notifiedShifts));
     }
 
     async function showNotification(title, body) {
-      try {
-        const capacitor = window.Capacitor;
-        const localNotifications = capacitor?.Plugins?.LocalNotifications;
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
 
-        if (capacitor && capacitor.isNativePlatform() && localNotifications) {
-          try {
-            await localNotifications.schedule({
-              notifications: [
-                {
-                  title: title,
-                  body: body,
-                  id: Date.now() % 100000,
-                  schedule: { at: new Date(Date.now() + 100) }
-                }
-              ]
-            });
-          } catch (e) {
-            console.error('Kunde inte visa lokal notis via Capacitor:', e);
-          }
-        } else if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-          navigator.serviceWorker.ready.then(reg => {
-            reg.showNotification(title, {
-              body: body,
-              icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%232563eb"/><text x="50" y="68" font-size="55" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">T</text></svg>',
-              vibrate: [200, 100, 200]
-            });
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.schedule({
+            notifications: [
+              {
+                title: title,
+                body: body,
+                id: Date.now() % 100000,
+                schedule: { at: new Date(Date.now() + 100) }
+              }
+            ]
           });
-        } else if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(title, { body: body });
+        } catch (e) {
+          console.error('Kunde inte visa lokal notis via Capacitor:', e);
         }
-      } catch (e) {
-        console.error('Fel i showNotification:', e);
+      } else if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(title, {
+            body: body,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%232563eb"/><text x="50" y="68" font-size="55" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">T</text></svg>',
+            vibrate: [200, 100, 200]
+          });
+        });
+      } else if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body: body });
       }
     }
 
@@ -1386,108 +1378,91 @@
     }
 
     async function requestNotificationPermission() {
-      try {
-        const capacitor = window.Capacitor;
-        const localNotifications = capacitor?.Plugins?.LocalNotifications;
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
 
-        if (capacitor && capacitor.isNativePlatform() && localNotifications) {
-          const perm = await localNotifications.requestPermissions();
-          return perm.display === 'granted';
-        } else if ('Notification' in window && Notification.permission === 'default') {
-          const res = await Notification.requestPermission();
-          return res === 'granted';
-        }
-        checkUpcomingShiftNotifications();
-        return true;
-      } catch (e) {
-        console.error('Kunde inte begära notisbehörighet:', e);
-        return true;
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        const perm = await localNotifications.requestPermissions();
+        return perm.display === 'granted';
+      } else if ('Notification' in window && Notification.permission === 'default') {
+        const res = await Notification.requestPermission();
+        return res === 'granted';
       }
+      checkUpcomingShiftNotifications();
+      return true;
     }
 
     let lastNotifiedMinute = -1;
 
     async function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
-      try {
-        const capacitor = window.Capacitor;
-        const localNotifications = capacitor?.Plugins?.LocalNotifications;
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
 
-        if (capacitor && capacitor.isNativePlatform() && localNotifications) {
-          try {
-            await localNotifications.createChannel({
-              id: 'active_shift_channel',
-              name: 'Aktivt skift & Tidtagning',
-              description: 'Visar pågående arbetstid i notisfältet',
-              importance: 5,
-              visibility: 1,
-              lights: true,
-              vibration: false
-            });
-          } catch (channelErr) {
-            console.log('Skapande av kanal skippades eller stöds ej:', channelErr);
-          }
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.createChannel({
+            id: 'active_shift_channel',
+            name: 'Aktivt skift & Tidtagning',
+            description: 'Visar pågående arbetstid i notisfältet',
+            importance: 5,
+            visibility: 1,
+            lights: true,
+            vibration: false
+          });
 
-          try {
-            await localNotifications.schedule({
-              notifications: [
-                {
-                  title: title,
-                  body: body,
-                  id: 1,
-                  ongoing: true,
-                  autoCancel: false,
-                  channelId: 'active_shift_channel'
-                }
-              ]
-            });
-          } catch (scheduleErr) {
-            console.error('Kunde inte schemalägga notis:', scheduleErr);
-          }
-        } else {
-          if (navigator.serviceWorker && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(reg => {
-              if (reg.active) {
-                reg.active.postMessage({
-                  type: 'UPDATE_SHIFT_NOTIFICATION',
-                  title: title,
-                  body: body,
-                  isRunning: isRunning,
-                  isBreak: isBreak,
-                  timestamp: startTimeMs || Date.now()
-                });
+          await localNotifications.schedule({
+            notifications: [
+              {
+                title: title,
+                body: body,
+                id: 1,
+                ongoing: true,
+                autoCancel: false,
+                channelId: 'active_shift_channel'
               }
-            });
-          }
+            ]
+          });
+        } catch (err) {
+          console.error('Kunde inte schemalägga lokal notis via Capacitor:', err);
         }
-      } catch (err) {
-        console.error('Kunde inte uppdatera bakgrundsnotis:', err);
+      } else {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'UPDATE_SHIFT_NOTIFICATION',
+                title: title,
+                body: body,
+                isRunning: isRunning,
+                isBreak: isBreak,
+                timestamp: startTimeMs || Date.now()
+              });
+            }
+          });
+        }
       }
     }
 
     async function clearBackgroundNotification() {
-      try {
-        const capacitor = window.Capacitor;
-        const localNotifications = capacitor?.Plugins?.LocalNotifications;
+      const capacitor = window.Capacitor;
+      const localNotifications = capacitor?.Plugins?.LocalNotifications;
 
-        if (capacitor && capacitor.isNativePlatform() && localNotifications) {
-          try {
-            await localNotifications.cancel({ notifications: [{ id: 1 }] });
-          } catch (err) {
-            console.error('Kunde inte rensa lokal notis:', err);
-          }
-        } else {
-          if ('Notification' in window && navigator.serviceWorker) {
-            navigator.serviceWorker.ready.then(reg => {
-              if (reg.active) {
-                reg.active.postMessage({
-                  type: 'CLEAR_NOTIFICATION'
-                });
-              }
-            });
-          }
+      if (capacitor && capacitor.isNativePlatform() && localNotifications) {
+        try {
+          await localNotifications.cancel({ notifications: [{ id: 1 }] });
+        } catch (err) {
+          console.error('Kunde inte rensa lokal notis:', err);
         }
-      } catch (e) {
-        console.error('Fel i clearBackgroundNotification:', e);
+      } else {
+        if ('Notification' in window && navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'CLEAR_NOTIFICATION'
+              });
+            }
+          });
+        }
       }
     }
 
@@ -3599,7 +3574,7 @@
         
         ot_enabled: document.getElementById('field-ot-enabled').checked,
         ot_monthly_cap: parseFloat(document.getElementById('field-ot-monthly-cap').value) === 0 ? 0 : (parseFloat(document.getElementById('field-ot-monthly-cap').value) || 160),
-        ot_rate_type: document.getElementById('field-ot-rate-type').value || 'multiplier',
+        ot_rate_type: document.getElementById('field-ot-rate-type').value,
         ot_simple_value: parseFloat(document.getElementById('field-ot-simple-val').value) || 1.5,
         ot_qual_value: parseFloat(document.getElementById('field-ot-qual-val').value) === 0 ? 0 : (parseFloat(document.getElementById('field-ot-qual-val').value) || 2.0),
 
