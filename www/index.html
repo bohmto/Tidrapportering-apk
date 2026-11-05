@@ -1400,6 +1400,17 @@
 
       if (capacitor && capacitor.isNativePlatform() && localNotifications) {
         try {
+          // Skapa notifikationskanal med max prioritet (importance 5) så den visas i notisfältet
+          await localNotifications.createChannel({
+            id: 'active_shift_channel',
+            name: 'Aktivt skift & Tidtagning',
+            description: 'Visar pågående arbetstid i notisfältet',
+            importance: 5,
+            visibility: 1,
+            lights: true,
+            vibration: false
+          });
+
           await localNotifications.schedule({
             notifications: [
               {
@@ -2540,6 +2551,17 @@
 
       alarmStateMap = {};
       setActiveShift(shift);
+
+      // Tvinga fram notisen i notisfältet omedelbart vid start
+      const cust = getCustomers().find(c => c.id === customerId);
+      const custName = cust ? cust.name : 'Okänd kund';
+      updateBackgroundNotification(
+        `⏱️ Arbetar på ${custName} (00:00:00)`,
+        `Startade kl ${new Date(shift.startTime).toTimeString().slice(0, 5)}`,
+        true,
+        false,
+        shift.startTime
+      );
     }
 
     function toggleBreak() {
