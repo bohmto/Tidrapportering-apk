@@ -35,7 +35,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-
+     
       - name: Synka Capacitor och förbered Android
         run: |
           if [ ! -d "android" ]; then
@@ -48,9 +48,12 @@ jobs:
           if [ -f "$MANIFEST_PATH" ]; then
             sed -i '/<manifest/a \    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />' "$MANIFEST_PATH"
             sed -i '/<manifest/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />' "$MANIFEST_PATH"
+            sed -i '/<manifest/a \    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />' "$MANIFEST_PATH"
             sed -i '/<manifest/a \    <uses-permission android:name="android.permission.WAKE_LOCK" />' "$MANIFEST_PATH"
             echo "Bakgrunds- och notisbehörigheter tillagda i AndroidManifest.xml"
           fi
+
+      
 
       - name: Bygg Debug APK med Gradle
         run: |
