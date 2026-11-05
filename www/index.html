@@ -2514,6 +2514,18 @@
       await requestWakeLock(); 
       startBackgroundAudioKeepAlive();
 
+      // Aktivera Cordova Background Mode för Android APK så att processen och notisen hålls vid liv
+      if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
+        window.cordova.plugins.backgroundMode.enable();
+        window.cordova.plugins.backgroundMode.setDefaults({
+          title: "Tidsrapportering aktiv",
+          text: "Passet rullar i bakgrunden...",
+          ticker: "Tidsrapportering körs",
+          hidden: false,
+          clearOnStop: false
+        });
+      }
+
       const breakDuration = parseInt(document.getElementById('live-break-duration').value, 10) || 0;
       const shift = {
         customerId,
@@ -2564,6 +2576,11 @@
 
       releaseWakeLock(); 
       stopBackgroundAudioKeepAlive();
+
+      // Inaktivera Cordova Background Mode när passet avslutas
+      if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
+        window.cordova.plugins.backgroundMode.disable();
+      }
 
       let totalBreakMs = shift.breakTimeMs;
       let breaksList = shift.breaks ? [...shift.breaks] : [];
