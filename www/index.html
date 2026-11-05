@@ -485,7 +485,7 @@
 
         <div class="form-group">
           <label for="time-project">Projekt</label>
-          <input type="text" id="time-project" placeholder="t.ex. Chaufför Ica">
+          <input type="text" id="time-project" placeholder="t.ex. Chaufför Test AB">
         </div>
 
         <div class="form-group">
@@ -522,7 +522,7 @@
 
         <div class="form-group">
           <label for="time-desc">Beskrivning / Moment / Ordernummer</label>
-          <input type="text" id="time-desc" placeholder="t.ex. 80131 linken gick inte att flytta...">
+          <input type="text" id="time-desc" placeholder="t.ex. Körning för Test AB...">
         </div>
 
         <div style="display: flex; gap: 8px;">
@@ -835,7 +835,7 @@
 
       <div class="form-group" style="margin-top: 12px;">
         <label for="modal-sched-note">Anteckning / Kund / Uppdrag</label>
-        <textarea id="modal-sched-note" rows="2" placeholder="t.ex. Ica Hem till Dig - Servicearbete..."></textarea>
+        <textarea id="modal-sched-note" rows="2" placeholder="t.ex. Test AB - Servicearbete..."></textarea>
       </div>
 
       <div class="modal-actions" style="justify-content: space-between;">
@@ -860,12 +860,12 @@
 
       <div class="form-group">
         <label for="field-name">Kundnamn *</label>
-        <input type="text" id="field-name" placeholder="t.ex. Ica Hem till Dig" required>
+        <input type="text" id="field-name" placeholder="t.ex. Test AB" required>
       </div>
 
       <div class="form-group">
         <label for="field-rate">Ordinarie timpris (kr/h) *</label>
-        <input type="number" id="field-rate" step="any" min="0" placeholder="481" required>
+        <input type="number" id="field-rate" step="any" min="0" placeholder="500" required>
       </div>
 
       <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; background: #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
@@ -1074,7 +1074,7 @@
       {
         id: 'k_1',
         name: 'Test AB',
-        hourly_rate: 300,
+        hourly_rate: 500,
         night_work_exempt: false,
         ob_enabled: true,
         ob_start_time: '18:00',
@@ -1092,7 +1092,7 @@
         ot_rate_type: 'multiplier',
         ot_simple_value: 1.5,
         ot_qual_value: 2.0,
-        notes: 'Chaufför Ica - Standardavtal'
+        notes: 'Test AB - Standardavtal'
       }
     ];
 
@@ -1313,7 +1313,7 @@
           updated = true;
         }
         if (!entry.project) {
-          entry.project = "Chaufför Ica";
+          entry.project = "Chaufför Test AB";
           updated = true;
         }
       });
@@ -2655,7 +2655,7 @@
       const newEntry = {
         id: 'entry_' + Date.now(),
         customerId: shift.customerId,
-        project: 'Chaufför Ica',
+        project: 'Chaufför Test AB',
         date: dateStr,
         startTime: startTimeStr,
         endTime: endTimeStr,
@@ -2946,7 +2946,7 @@
       document.getElementById('break-rows-container').innerHTML = '';
       document.getElementById('total-break-display').innerText = '0';
       document.getElementById('time-date').valueAsDate = new Date();
-      document.getElementById('time-project').value = 'Chaufför Ica';
+      document.getElementById('time-project').value = 'Chaufför Test AB';
       document.getElementById('time-break').value = "0";
       document.getElementById('form-title').innerText = 'Spara pass';
       document.getElementById('btn-save-entry').innerText = 'Spara tidssegment';
@@ -2957,7 +2957,7 @@
       e.preventDefault();
       const editId = document.getElementById('entry-edit-id').value;
       const customerId = document.getElementById('time-customer').value;
-      const project = document.getElementById('time-project').value.trim() || 'Chaufför Ica';
+      const project = document.getElementById('time-project').value.trim() || 'Chaufför Test AB';
       const date = document.getElementById('time-date').value;
       const startTime = document.getElementById('time-start').value || '';
       const endTime = document.getElementById('time-end').value || '';
@@ -3007,7 +3007,7 @@
       if (!entry) return;
       document.getElementById('entry-edit-id').value = entry.id;
       document.getElementById('time-customer').value = entry.customerId;
-      document.getElementById('time-project').value = entry.project || 'Chaufför Ica';
+      document.getElementById('time-project').value = entry.project || 'Chaufför Test AB';
       document.getElementById('time-date').value = entry.date;
       document.getElementById('time-start').value = entry.startTime || '';
       document.getElementById('time-end').value = entry.endTime || '';
@@ -3205,8 +3205,8 @@
       const startTime = entry.startTime || "00:00";
       const endTime = entry.endTime || "00:00";
       const baseRate = customer ? safeNum(customer.hourly_rate) : 0;
-      const custName = customer ? customer.name : "Ica Hem till Dig";
-      const proj = entry.project || "Chaufför Ica";
+      const custName = customer ? customer.name : "Test AB";
+      const proj = entry.project || "Chaufför Test AB";
       const desc = entry.desc || "";
       const isWk = isWeekend(entry.date);
 
@@ -3599,7 +3599,7 @@
         
         ot_enabled: document.getElementById('field-ot-enabled').checked,
         ot_monthly_cap: parseFloat(document.getElementById('field-ot-monthly-cap').value) === 0 ? 0 : (parseFloat(document.getElementById('field-ot-monthly-cap').value) || 160),
-        ot_rate_type: document.getElementById('field-ot-rate-type-value').value || 'multiplier',
+        ot_rate_type: document.getElementById('field-ot-rate-type').value || 'multiplier',
         ot_simple_value: parseFloat(document.getElementById('field-ot-simple-val').value) || 1.5,
         ot_qual_value: parseFloat(document.getElementById('field-ot-qual-val').value) === 0 ? 0 : (parseFloat(document.getElementById('field-ot-qual-val').value) || 2.0),
 
@@ -3629,7 +3629,7 @@
       renderProfileDropdown();
       migrateOldEntries();
       document.getElementById('time-date').valueAsDate = new Date();
-      document.getElementById('time-project').value = 'Chaufför Ica';
+      document.getElementById('time-project').value = 'Chaufför Test AB';
       populateCustomerDropdowns();
       renderCustomerList();
       renderTimeEntries();
