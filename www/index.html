@@ -1218,7 +1218,7 @@
             body: body,
             icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" fill="%232563eb"/><text x="50" y="68" font-size="55" text-anchor="middle" fill="white" font-family="sans-serif" font-weight="bold">T</text></svg>',
             vibrate: [200, 100, 200],
-            tag: 'reminder-notification' // FIX 1: Unik tagg för påminnelser så de inte krockar med timern
+            tag: 'reminder-notification'
           });
         });
       } else if ('Notification' in window && Notification.permission === 'granted') {
@@ -1393,8 +1393,7 @@
       return true;
     }
 
-    let lastNotifiedMinute = -1;
-
+    // Uppdaterad funktion för säker notishantering utan minutlooper
     async function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
       const capacitor = window.Capacitor;
       const localNotifications = capacitor?.Plugins?.LocalNotifications;
@@ -1405,11 +1404,16 @@
             id: 'active_shift_channel',
             name: 'Aktivt skift & Tidtagning',
             description: 'Visar pågående arbetstid i notisfältet',
-            importance: 5,
+            importance: 4,
             visibility: 1,
             lights: true,
             vibration: false
           });
+
+          // Avbryt alltid eventuell befintlig notis med ID 1 för att undvika kraschkonflikter
+          try {
+            await localNotifications.cancel({ notifications: [{ id: 1 }] });
+          } catch (e) {}
 
           await localNotifications.schedule({
             notifications: [
@@ -2525,7 +2529,6 @@
       await requestWakeLock(); 
       startBackgroundAudioKeepAlive();
 
-      // Aktivera Cordova Background Mode för Android APK så att processen och notisen hålls vid liv
       if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         window.cordova.plugins.backgroundMode.enable();
         window.cordova.plugins.backgroundMode.setDefaults({
@@ -2550,17 +2553,16 @@
       };
 
       alarmStateMap = {};
-      
-      // FIX 2: Sätt lastNotifiedMinute direkt vid start så tick() inte skickar en dubblett
       lastNotifiedMinute = new Date().getMinutes();
 
       setActiveShift(shift);
 
-      // Tvinga fram notisen i notisfältet omedelbart vid start
       const cust = getCustomers().find(c => c.id === customerId);
       const custName = cust ? cust.name : 'Okänd kund';
+      
+      // Skapa notisen en gång stabilt vid start
       updateBackgroundNotification(
-        `⏱️ Arbetar på ${custName} (00:00:00)`,
+        `⏱️ Arbetar på ${custName}`,
         `Startade kl ${new Date(shift.startTime).toTimeString().slice(0, 5)}`,
         true,
         false,
@@ -2572,9 +2574,21 @@
       const shift = getActiveShift();
       if (!shift) return;
 
+      const cust = getCustomers().find(c => c.id === shift.customerId);
+      const custName = cust ? cust.name : 'Okänd kund';
+
       if (shift.status === 'working') {
         shift.status = 'break';
         shift.breakStart = Date.now();
+        
+        // Uppdatera notisen direkt till rast-läge
+        updateBackgroundNotification(
+          `☕ Rast på ${custName}`,
+          `Rast sedan kl ${new Date(shift.breakStart).toTimeString().slice(0, 5)}`,
+          true,
+          true,
+          shift.breakStart
+        );
       } else if (shift.status === 'break') {
         shift.status = 'working';
         const breakEnd = Date.now();
@@ -2591,6 +2605,15 @@
         });
 
         shift.breakStart = null;
+
+        // Uppdatera notisen tillbaka till arbete-läge
+        updateBackgroundNotification(
+          `⏱️ Arbetar på ${custName}`,
+          `Startade om kl ${new Date(shift.lastPeriodStart).toTimeString().slice(0, 5)}`,
+          true,
+          false,
+          shift.startTime
+        );
       }
 
       setActiveShift(shift);
@@ -2603,7 +2626,6 @@
       releaseWakeLock(); 
       stopBackgroundAudioKeepAlive();
 
-      // Inaktivera Cordova Background Mode när passet avslutas
       if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         window.cordova.plugins.backgroundMode.disable();
       }
@@ -2861,17 +2883,8 @@
             topStatusText.innerText = newStatusText;
           }
           updateAppStatusIndicators(currentShift, clockText);
+          // (Minut-anropen till systemnotisen har tagits bort härifrån för att stoppa kraschloopen)
 
-          if (lastNotifiedMinute !== min) {
-            lastNotifiedMinute = min;
-            updateBackgroundNotification(
-              `⏱️ Arbetar på ${custName} (${clockText.slice(0, 5)})`,
-              `Startade kl ${startTimeStr} | Nästa rast senast kl ${firstBreakStr}`,
-              true,
-              false,
-              currentShift.startTime
-            );
-          }
         } else if (currentShift.status === 'break') {
           const elapsedBreakMs = Date.now() - currentShift.breakStart;
           const bSec = Math.floor((elapsedBreakMs / 1000) % 60);
@@ -2884,17 +2897,7 @@
             topStatusText.innerText = newStatusText;
           }
           updateAppStatusIndicators(currentShift, clockText);
-
-          if (lastNotifiedMinute !== bMin) {
-            lastNotifiedMinute = bMin;
-            updateBackgroundNotification(
-              `☕ Rast på ${custName} (${breakClockText})`,
-              `Rast sedan kl ${new Date(currentShift.breakStart).toTimeString().slice(0,5)}`,
-              true,
-              true,
-              currentShift.breakStart
-            );
-          }
+          // (Minut-anropen till systemnotisen har tagits bort härifrån för att stoppa kraschloopen)
         }
       }
 
