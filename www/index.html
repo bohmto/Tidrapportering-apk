@@ -1393,47 +1393,93 @@
       return true;
     }
 
-    // Kraschfri funktion för bakgrundsnotis anpassad för Android-APK och Cordova Background Mode
+    // Uppdaterad funktion för säker notishantering (stöd för både Cordova Background Mode och Capacitor/ServiceWorker)
     async function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
       if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-        window.cordova.plugins.backgroundMode.configure({
-          title: title,
-          text: body,
-          hidden: false,
-          clearOnStop: false
-        });
-        return;
+        try {
+          window.cordova.plugins.backgroundMode.configure({
+            title: title,
+            text: body,
+            hidden: false,
+            silent: false
+          });
+        } catch (e) {
+          console.error('Kunde inte uppdatera Cordova backgroundMode:', e);
+        }
       }
+
       const capacitor = window.Capacitor;
       const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
       if (capacitor && capacitor.isNativePlatform() && localNotifications) {
         try {
-          await localNotifications.cancel({ notifications: [{ id: 1 }] }).catch(() => {});
+          await localNotifications.createChannel({
+            id: 'active_shift_channel',
+            name: 'Aktivt skift & Tidtagning',
+            description: 'Visar pågående arbetstid i notisfältet',
+            importance: 4,
+            visibility: 1,
+            lights: true,
+            vibration: false
+          });
+
+          try {
+            await localNotifications.cancel({ notifications: [{ id: 1 }] });
+          } catch (e) {}
+
           await localNotifications.schedule({
-            notifications: [{
-              title: title,
-              body: body,
-              id: 1,
-              ongoing: true,
-              autoCancel: false
-            }]
+            notifications: [
+              {
+                title: title,
+                body: body,
+                id: 1,
+                ongoing: true,
+                autoCancel: false,
+                channelId: 'active_shift_channel'
+              }
+            ]
           });
         } catch (err) {
-          console.error('Kunde inte visa notis:', err);
+          console.error('Kunde inte schemalägga lokal notis via Capacitor:', err);
+        }
+      } else {
+        if (navigator.serviceWorker && navigator.serviceWorker.ready) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'UPDATE_SHIFT_NOTIFICATION',
+                title: title,
+                body: body,
+                isRunning: isRunning,
+                isBreak: isBreak,
+                timestamp: startTimeMs || Date.now()
+              });
+            }
+          });
         }
       }
     }
 
     async function clearBackgroundNotification() {
-      if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
-        return;
-      }
       const capacitor = window.Capacitor;
       const localNotifications = capacitor?.Plugins?.LocalNotifications;
+
       if (capacitor && capacitor.isNativePlatform() && localNotifications) {
         try {
           await localNotifications.cancel({ notifications: [{ id: 1 }] });
-        } catch (err) {}
+        } catch (err) {
+          console.error('Kunde inte rensa lokal notis:', err);
+        }
+      } else {
+        if ('Notification' in window && navigator.serviceWorker) {
+          navigator.serviceWorker.ready.then(reg => {
+            if (reg.active) {
+              reg.active.postMessage({
+                type: 'CLEAR_NOTIFICATION'
+              });
+            }
+          });
+        }
       }
     }
 
@@ -2519,11 +2565,14 @@
       };
 
       alarmStateMap = {};
+      lastNotifiedMinute = new Date().getMinutes();
+
       setActiveShift(shift);
 
       const cust = getCustomers().find(c => c.id === customerId);
       const custName = cust ? cust.name : 'Okänd kund';
       
+      // Skapa notisen en gång stabilt vid start
       updateBackgroundNotification(
         `⏱️ Arbetar på ${custName}`,
         `Startade kl ${new Date(shift.startTime).toTimeString().slice(0, 5)}`,
@@ -2544,6 +2593,7 @@
         shift.status = 'break';
         shift.breakStart = Date.now();
         
+        // Uppdatera notisen direkt till rast-läge
         updateBackgroundNotification(
           `☕ Rast på ${custName}`,
           `Rast sedan kl ${new Date(shift.breakStart).toTimeString().slice(0, 5)}`,
@@ -2568,6 +2618,7 @@
 
         shift.breakStart = null;
 
+        // Uppdatera notisen tillbaka till arbete-läge
         updateBackgroundNotification(
           `⏱️ Arbetar på ${custName}`,
           `Startade om kl ${new Date(shift.lastPeriodStart).toTimeString().slice(0, 5)}`,
@@ -2742,6 +2793,7 @@
         clearBackgroundNotification();
 
         if (timerInterval) clearInterval(timerInterval);
+        lastNotifiedMinute = -1;
         return;
       }
 
@@ -2843,6 +2895,7 @@
             topStatusText.innerText = newStatusText;
           }
           updateAppStatusIndicators(currentShift, clockText);
+
         } else if (currentShift.status === 'break') {
           const elapsedBreakMs = Date.now() - currentShift.breakStart;
           const bSec = Math.floor((elapsedBreakMs / 1000) % 60);
