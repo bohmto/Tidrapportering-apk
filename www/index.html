@@ -1032,6 +1032,16 @@
   </nav>
 
   <script>
+    // Fånga upp JavaScript-fel och ohanterade löften direkt på skärmen
+    window.onerror = function(message, source, lineno, colno, error) {
+      alert("JS-fel: " + message + " (Rad: " + lineno + ")");
+      return true;
+    };
+
+    window.addEventListener('unhandledrejection', function(event) {
+      alert("Ohanterat löftesfel (Promise): " + event.reason);
+    });
+
     function showSyncHelp() {
       alert(
         "ℹ️ OM MOLN- & SERVERSYNKRONISERING\n\n" +
