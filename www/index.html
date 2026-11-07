@@ -1032,14 +1032,14 @@
   </nav>
 
   <script>
-    // Fånga upp JavaScript-fel och ohanterade löften direkt på skärmen
+    // Fånga upp JavaScript-fel och ohanterade löften säkert i konsolen utan att blockera appstart
     window.onerror = function(message, source, lineno, colno, error) {
-      alert("JS-fel: " + message + " (Rad: " + lineno + ")");
+      console.error("JS-fel: " + message + " (Rad: " + lineno + ")");
       return true;
     };
 
     window.addEventListener('unhandledrejection', function(event) {
-      alert("Ohanterat löftesfel (Promise): " + event.reason);
+      console.error("Ohanterat löftesfel (Promise): ", event.reason);
     });
 
     function showSyncHelp() {
@@ -1403,7 +1403,6 @@
       return true;
     }
 
-    // Uppdaterad funktion för säker notishantering (stöd för både Cordova Background Mode och Capacitor/ServiceWorker)
     async function updateBackgroundNotification(title, body, isRunning, isBreak, startTimeMs) {
       if (window.cordova && window.cordova.plugins && window.cordova.plugins.backgroundMode) {
         try {
@@ -2582,7 +2581,6 @@
       const cust = getCustomers().find(c => c.id === customerId);
       const custName = cust ? cust.name : 'Okänd kund';
       
-      // Skapa notisen en gång stabilt vid start
       updateBackgroundNotification(
         `⏱️ Arbetar på ${custName}`,
         `Startade kl ${new Date(shift.startTime).toTimeString().slice(0, 5)}`,
@@ -2603,7 +2601,6 @@
         shift.status = 'break';
         shift.breakStart = Date.now();
         
-        // Uppdatera notisen direkt till rast-läge
         updateBackgroundNotification(
           `☕ Rast på ${custName}`,
           `Rast sedan kl ${new Date(shift.breakStart).toTimeString().slice(0, 5)}`,
@@ -2628,7 +2625,6 @@
 
         shift.breakStart = null;
 
-        // Uppdatera notisen tillbaka till arbete-läge
         updateBackgroundNotification(
           `⏱️ Arbetar på ${custName}`,
           `Startade om kl ${new Date(shift.lastPeriodStart).toTimeString().slice(0, 5)}`,
