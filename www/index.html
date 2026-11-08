@@ -1032,7 +1032,6 @@
   </nav>
 
   <script>
-    // Fånga upp JavaScript-fel och ohanterade löften säkert i konsolen utan att blockera appstart
     window.onerror = function(message, source, lineno, colno, error) {
       console.error("JS-fel: " + message + " (Rad: " + lineno + ")");
       return true;
@@ -1107,7 +1106,6 @@
     ];
 
     let timerInterval = null;
-    let alarmStateMap = {};
     let currentCalDate = new Date();
 
     const tabsList = ['time', 'customers', 'client'];
@@ -1152,16 +1150,6 @@
       if (badge) {
         badge.innerText = TAB_NAMES[tab] || 'Tid';
       }
-    }
-
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('sw.js').then(reg => {
-          console.log('Service Worker registrerad:', reg);
-        }).catch(err => {
-          console.error('Service Worker fel vid registrering:', err);
-        });
-      });
     }
 
     function getAllProfiles() {
@@ -2272,7 +2260,6 @@
         localStorage.setItem(getStorageKey('app_active_shift_v5'), JSON.stringify(shift));
       } else {
         localStorage.removeItem(getStorageKey('app_active_shift_v5'));
-        alarmStateMap = {};
       }
       updateTimerUI();
     }
@@ -2389,18 +2376,12 @@
         breakTargetMins: breakDuration
       };
 
-      alarmStateMap = {};
-      lastNotifiedMinute = new Date().getMinutes();
-
       setActiveShift(shift);
     }
 
     function toggleBreak() {
       const shift = getActiveShift();
       if (!shift) return;
-
-      const cust = getCustomers().find(c => c.id === shift.customerId);
-      const custName = cust ? cust.name : 'Okänd kund';
 
       if (shift.status === 'working') {
         shift.status = 'break';
@@ -2412,7 +2393,6 @@
         shift.breakTimeMs += breakDurationMs;
 
         shift.lastPeriodStart = Date.now();
-        alarmStateMap = {};
 
         if (!shift.breaks) shift.breaks = [];
         shift.breaks.push({
