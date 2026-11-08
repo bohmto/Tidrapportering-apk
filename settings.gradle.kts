@@ -14,3 +14,5 @@ dependencyResolutionManagement {
 }
 rootProject.name = "Tidrapportering"
 include(":app")
+android.useAndroidX=true
+android.enableJetifier=true
