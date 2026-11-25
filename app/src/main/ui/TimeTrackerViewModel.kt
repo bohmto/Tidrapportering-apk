@@ -1,5 +1,8 @@
 package com.example.tidrapportering.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import com.example.tidrapportering.domain.PricingCalculator
 import com.example.tidrapportering.domain.RestCalculator
@@ -76,8 +79,10 @@ class TimeTrackerViewModel(
         notes = "Chaufför Ica - Standardavtal"
     )
 
-    var uiState = TrackerUiState(
-        customers = listOf(defaultCustomer)
+    var uiState by mutableStateOf(
+        TrackerUiState(
+            customers = listOf(defaultCustomer)
+        )
     )
         private set
 
@@ -125,6 +130,7 @@ class TimeTrackerViewModel(
     }
 
     fun refreshTimerTick(nowEpochMs: Long = System.currentTimeMillis()) {
+        if (uiState.activeShift == null) return
         val snap = timerManager.snapshot(uiState.activeShift, nowEpochMs)
         uiState = uiState.copy(timerSnapshot = snap)
     }
