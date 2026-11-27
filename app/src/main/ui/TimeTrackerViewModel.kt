@@ -17,7 +17,6 @@ import com.example.tidrapportering.model.RestAnalysisResult
 import com.example.tidrapportering.model.ShiftDay
 import com.example.tidrapportering.model.TimeEntry
 import com.example.tidrapportering.model.TimerSnapshot
-import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -38,6 +37,7 @@ enum class AppTab(val label: String) {
 data class TrackerUiState(
     val currentTab: AppTab = AppTab.TIME,
     val customers: List<Customer> = emptyList(),
+    val selectedCustomerId: String = "",
     val entries: List<TimeEntry> = emptyList(),
     val activeShift: ActiveShift? = null,
     val timerSnapshot: TimerSnapshot = TimerSnapshot(),
@@ -45,7 +45,7 @@ data class TrackerUiState(
     val userProfile: UserProfileInfo = UserProfileInfo(),
     val scheduleEnabled: Boolean = true,
     val showWorkedTimeInCalendar: Boolean = true,
-    val calendarShifts: Map<LocalDate, ShiftDay> = emptyMap(),
+    val calendarShifts: Map<java.time.LocalDate, ShiftDay> = emptyMap(),
     val restAnalysis: RestAnalysisResult? = null
 )
 
@@ -81,13 +81,20 @@ class TimeTrackerViewModel(
 
     var uiState by mutableStateOf(
         TrackerUiState(
-            customers = listOf(defaultCustomer)
+            customers = listOf(defaultCustomer),
+            selectedCustomerId = defaultCustomer.id
         )
     )
         private set
 
     fun selectTab(tab: AppTab) {
         uiState = uiState.copy(currentTab = tab)
+    }
+
+    fun selectCustomer(customerId: String) {
+        if (uiState.customers.any { it.id == customerId }) {
+            uiState = uiState.copy(selectedCustomerId = customerId)
+        }
     }
 
     fun startShift(customerId: String, breakTargetMins: Int = 30) {
@@ -98,6 +105,7 @@ class TimeTrackerViewModel(
             breakTargetMins = breakTargetMins
         )
         uiState = uiState.copy(
+            selectedCustomerId = customer.id,
             activeShift = started,
             timerSnapshot = timerManager.snapshot(started)
         )
@@ -167,7 +175,24 @@ class TimeTrackerViewModel(
         } else {
             uiState.customers + customer
         }
-        uiState = uiState.copy(customers = updated)
+        val nextSelected = uiState.selectedCustomerId.ifBlank { customer.id }
+        uiState = uiState.copy(
+            customers = updated,
+            selectedCustomerId = nextSelected
+        )
+    }
+
+    fun deleteCustomer(customerId: String) {
+        val updated = uiState.customers.filterNot { it.id == customerId }
+        val nextSelected = if (uiState.selectedCustomerId == customerId) {
+            updated.firstOrNull()?.id.orEmpty()
+        } else {
+            uiState.selectedCustomerId
+        }
+        uiState = uiState.copy(
+            customers = updated,
+            selectedCustomerId = nextSelected
+        )
     }
 
     fun updateUserProfile(profile: UserProfileInfo) {
