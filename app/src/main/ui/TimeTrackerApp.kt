@@ -47,13 +47,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tidrapportering.model.Customer
-import com.example.tidrapportering.model.RateType
 import com.example.tidrapportering.model.ShiftStatus
 import com.example.tidrapportering.model.TimeEntry
-import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import kotlinx.coroutines.delay
 
 @Composable
 fun TimeTrackerApp(
