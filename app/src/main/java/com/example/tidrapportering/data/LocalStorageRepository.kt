@@ -61,26 +61,26 @@ class LocalStorageRepository(context: Context) {
                     val o = arr.getJSONObject(i)
                     add(
                         Customer(
-                            id = o.getString("id"),
-                            name = o.getString("name"),
+                            id = o.optString("id", ""),
+                            name = o.optString("name", ""),
                             hourlyRate = o.optDouble("hourlyRate", 0.0),
                             nightWorkExempt = o.optBoolean("nightWorkExempt", false),
                             obEnabled = o.optBoolean("obEnabled", false),
-                            obStartTime = parseLocalTimeOr(o.optString("obStartTime"), LocalTime.of(18, 0)),
-                            obEndTime = parseLocalTimeOr(o.optString("obEndTime"), LocalTime.of(6, 0)),
-                            obRateType = parseRateTypeOr(o.optString("obRateType"), RateType.MULTIPLIER),
+                            obStartTime = parseLocalTimeOr(o.optNullableString("obStartTime"), LocalTime.of(18, 0)),
+                            obEndTime = parseLocalTimeOr(o.optNullableString("obEndTime"), LocalTime.of(6, 0)),
+                            obRateType = parseRateTypeOr(o.optNullableString("obRateType"), RateType.MULTIPLIER),
                             obRateValue = o.optDouble("obRateValue", 1.5),
                             obWeekendEnabled = o.optBoolean("obWeekendEnabled", false),
                             obWeekendAllDay = o.optBoolean("obWeekendAllDay", true),
-                            obWeekendFridayStart = parseLocalTimeOr(o.optString("obWeekendFridayStart"), LocalTime.of(21, 0)),
-                            obWeekendSundayEnd = parseLocalTimeOr(o.optString("obWeekendSundayEnd"), LocalTime.MIDNIGHT),
-                            obWeekendStartTime = parseLocalTimeOr(o.optString("obWeekendStartTime"), LocalTime.MIDNIGHT),
-                            obWeekendEndTime = parseLocalTimeOr(o.optString("obWeekendEndTime"), LocalTime.of(23, 59)),
-                            obWeekendRateType = parseRateTypeOr(o.optString("obWeekendRateType"), RateType.MULTIPLIER),
+                            obWeekendFridayStart = parseLocalTimeOr(o.optNullableString("obWeekendFridayStart"), LocalTime.of(21, 0)),
+                            obWeekendSundayEnd = parseLocalTimeOr(o.optNullableString("obWeekendSundayEnd"), LocalTime.MIDNIGHT),
+                            obWeekendStartTime = parseLocalTimeOr(o.optNullableString("obWeekendStartTime"), LocalTime.MIDNIGHT),
+                            obWeekendEndTime = parseLocalTimeOr(o.optNullableString("obWeekendEndTime"), LocalTime.of(23, 59)),
+                            obWeekendRateType = parseRateTypeOr(o.optNullableString("obWeekendRateType"), RateType.MULTIPLIER),
                             obWeekendRateValue = o.optDouble("obWeekendRateValue", 2.0),
                             otEnabled = o.optBoolean("otEnabled", false),
                             otMonthlyCap = o.optDouble("otMonthlyCap", 160.0),
-                            otRateType = parseRateTypeOr(o.optString("otRateType"), RateType.MULTIPLIER),
+                            otRateType = parseRateTypeOr(o.optNullableString("otRateType"), RateType.MULTIPLIER),
                             otSimpleValue = o.optDouble("otSimpleValue", 1.5),
                             otQualValue = o.optDouble("otQualValue", 2.0),
                             notes = o.optString("notes", "")
@@ -128,27 +128,27 @@ class LocalStorageRepository(context: Context) {
             buildList {
                 for (i in 0 until arr.length()) {
                     val o = arr.getJSONObject(i)
-                    val dateStr = o.optString("date")
+                    val dateStr = o.optNullableString("date") ?: continue
                     val date = runCatching { LocalDate.parse(dateStr) }.getOrNull() ?: continue
                     val breaksList = buildList {
                         val bArr = o.optJSONArray("breaks")
                         if (bArr != null) {
                             for (j in 0 until bArr.length()) {
                                 val bo = bArr.getJSONObject(j)
-                                val s = if (bo.isNull("start")) null else runCatching { LocalTime.parse(bo.getString("start")) }.getOrNull()
-                                val endT = if (bo.isNull("end")) null else runCatching { LocalTime.parse(bo.getString("end")) }.getOrNull()
+                                val s = bo.optNullableString("start")?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+                                val endT = bo.optNullableString("end")?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
                                 add(BreakPeriod(s, endT))
                             }
                         }
                     }
                     add(
                         TimeEntry(
-                            id = o.getString("id"),
+                            id = o.optString("id", ""),
                             customerId = o.optString("customerId", ""),
                             project = o.optString("project", ""),
                             date = date,
-                            startTime = if (o.isNull("startTime")) null else runCatching { LocalTime.parse(o.getString("startTime")) }.getOrNull(),
-                            endTime = if (o.isNull("endTime")) null else runCatching { LocalTime.parse(o.getString("endTime")) }.getOrNull(),
+                            startTime = o.optNullableString("startTime")?.let { runCatching { LocalTime.parse(it) }.getOrNull() },
+                            endTime = o.optNullableString("endTime")?.let { runCatching { LocalTime.parse(it) }.getOrNull() },
                             hours = o.optDouble("hours", 0.0),
                             breakMin = o.optInt("breakMin", 0),
                             breaks = breaksList,
@@ -178,11 +178,11 @@ class LocalStorageRepository(context: Context) {
         return runCatching {
             val o = JSONObject(raw)
             UserProfileInfo(
-                id = o.optString("id", fallback.id),
-                name = o.optString("name", fallback.name),
-                email = o.optString("email", fallback.email),
-                phone = o.optString("phone", fallback.phone),
-                address = o.optString("address", fallback.address)
+                id = o.optNullableString("id") ?: fallback.id,
+                name = o.optNullableString("name") ?: fallback.name,
+                email = o.optNullableString("email") ?: fallback.email,
+                phone = o.optNullableString("phone") ?: fallback.phone,
+                address = o.optNullableString("address") ?: fallback.address
             )
         }.getOrDefault(fallback)
     }
@@ -211,19 +211,25 @@ class LocalStorageRepository(context: Context) {
         val raw = prefs.getString("active_shift_json", null) ?: return null
         return runCatching {
             val o = JSONObject(raw)
-            val status = runCatching { ShiftStatus.valueOf(o.optString("status", ShiftStatus.WORKING.name)) }
-                .getOrDefault(ShiftStatus.WORKING)
+            val status = parseShiftStatusOr(o.optNullableString("status"), ShiftStatus.WORKING)
+            val startMs = o.getLong("startEpochMs")
             ActiveShift(
                 customerId = o.getString("customerId"),
                 customerName = o.optString("customerName", ""),
-                startEpochMs = o.getLong("startEpochMs"),
+                startEpochMs = startMs,
                 status = status,
                 accumulatedWorkMs = o.optLong("accumulatedWorkMs", 0L),
                 accumulatedBreakMs = o.optLong("accumulatedBreakMs", 0L),
-                currentSegmentStartMs = o.optLong("currentSegmentStartMs", o.getLong("startEpochMs")),
+                currentSegmentStartMs = o.optLong("currentSegmentStartMs", startMs),
                 breakTargetMins = o.optInt("breakTargetMins", 30)
             )
         }.getOrNull()
+    }
+
+    private fun JSONObject.optNullableString(key: String): String? {
+        if (!has(key) || isNull(key)) return null
+        val v = optString(key, "")
+        return if (v.isBlank() || v.equals("null", ignoreCase = true)) null else v
     }
 
     private fun parseLocalTimeOr(value: String?, default: LocalTime): LocalTime {
@@ -234,5 +240,10 @@ class LocalStorageRepository(context: Context) {
     private fun parseRateTypeOr(value: String?, default: RateType): RateType {
         if (value.isNullOrBlank()) return default
         return runCatching { RateType.valueOf(value) }.getOrDefault(default)
+    }
+
+    private fun parseShiftStatusOr(value: String?, default: ShiftStatus): ShiftStatus {
+        if (value.isNullOrBlank()) return default
+        return runCatching { ShiftStatus.valueOf(value) }.getOrDefault(default)
     }
 }
