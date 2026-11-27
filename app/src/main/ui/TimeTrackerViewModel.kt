@@ -18,17 +18,10 @@ import com.example.tidrapportering.model.RestAnalysisResult
 import com.example.tidrapportering.model.ShiftDay
 import com.example.tidrapportering.model.TimeEntry
 import com.example.tidrapportering.model.TimerSnapshot
+import com.example.tidrapportering.model.UserProfileInfo
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
-
-data class UserProfileInfo(
-    val id: String = "default_user",
-    val name: String = "T Nyström Böhm",
-    val email: String = "",
-    val phone: String = "",
-    val address: String = ""
-)
 
 enum class AppTab(val label: String) {
     TIME("Tid"),
