@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import com.example.tidrapportering.data.LocalStorageRepository
 import com.example.tidrapportering.domain.PricingCalculator
 import com.example.tidrapportering.domain.RestCalculator
 import com.example.tidrapportering.domain.ShiftTimerManager
@@ -17,6 +18,7 @@ import com.example.tidrapportering.model.RestAnalysisResult
 import com.example.tidrapportering.model.ShiftDay
 import com.example.tidrapportering.model.TimeEntry
 import com.example.tidrapportering.model.TimerSnapshot
+import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
@@ -45,14 +47,15 @@ data class TrackerUiState(
     val userProfile: UserProfileInfo = UserProfileInfo(),
     val scheduleEnabled: Boolean = true,
     val showWorkedTimeInCalendar: Boolean = true,
-    val calendarShifts: Map<java.time.LocalDate, ShiftDay> = emptyMap(),
+    val calendarShifts: Map<LocalDate, ShiftDay> = emptyMap(),
     val restAnalysis: RestAnalysisResult? = null
 )
 
 class TimeTrackerViewModel(
     private val pricingCalculator: PricingCalculator = PricingCalculator(),
     private val restCalculator: RestCalculator = RestCalculator(),
-    private val timerManager: ShiftTimerManager = ShiftTimerManager()
+    private val timerManager: ShiftTimerManager = ShiftTimerManager(),
+    private val storage: LocalStorageRepository? = null
 ) : ViewModel() {
 
     private val defaultCustomer = Customer(
@@ -79,13 +82,39 @@ class TimeTrackerViewModel(
         notes = "Chaufför Ica - Standardavtal"
     )
 
-    var uiState by mutableStateOf(
-        TrackerUiState(
-            customers = listOf(defaultCustomer),
-            selectedCustomerId = defaultCustomer.id
-        )
-    )
+    var uiState by mutableStateOf(buildInitialState())
         private set
+
+    private fun buildInitialState(): TrackerUiState {
+        val loadedCustomers = storage?.loadCustomers(listOf(defaultCustomer)) ?: listOf(defaultCustomer)
+        val customers = loadedCustomers.ifEmpty { listOf(defaultCustomer) }
+        val loadedEntries = storage?.loadEntries().orEmpty()
+        val loadedProfile = storage?.loadUserProfile(UserProfileInfo()) ?: UserProfileInfo()
+        val loadedShift = storage?.loadActiveShift()
+        val nowMs = System.currentTimeMillis()
+        val initialSnapshot = if (loadedShift != null) {
+            timerManager.snapshot(loadedShift, nowMs)
+        } else {
+            TimerSnapshot()
+        }
+        val initialRest = if (loadedEntries.isNotEmpty()) {
+            restCalculator.calculateRequiredRest(loadedEntries)
+        } else {
+            null
+        }
+        val initialSelectedId = loadedShift?.customerId?.takeIf { id -> customers.any { it.id == id } }
+            ?: customers.firstOrNull()?.id.orEmpty()
+
+        return TrackerUiState(
+            customers = customers,
+            selectedCustomerId = initialSelectedId,
+            entries = loadedEntries,
+            activeShift = loadedShift,
+            timerSnapshot = initialSnapshot,
+            userProfile = loadedProfile,
+            restAnalysis = initialRest
+        )
+    }
 
     fun selectTab(tab: AppTab) {
         uiState = uiState.copy(currentTab = tab)
@@ -104,6 +133,7 @@ class TimeTrackerViewModel(
             customerName = customer.name,
             breakTargetMins = breakTargetMins
         )
+        storage?.saveActiveShift(started)
         uiState = uiState.copy(
             selectedCustomerId = customer.id,
             activeShift = started,
@@ -114,6 +144,7 @@ class TimeTrackerViewModel(
     fun toggleBreak() {
         val current = uiState.activeShift ?: return
         val updated = timerManager.toggleBreak(current)
+        storage?.saveActiveShift(updated)
         uiState = uiState.copy(
             activeShift = updated,
             timerSnapshot = timerManager.snapshot(updated)
@@ -129,6 +160,8 @@ class TimeTrackerViewModel(
             desc = desc
         )
         val updatedEntries = listOf(finishedEntry) + uiState.entries
+        storage?.saveActiveShift(null)
+        storage?.saveEntries(updatedEntries)
         uiState = uiState.copy(
             activeShift = null,
             timerSnapshot = TimerSnapshot(),
@@ -154,6 +187,7 @@ class TimeTrackerViewModel(
         } else {
             listOf(entry) + uiState.entries
         }
+        storage?.saveEntries(updated)
         uiState = uiState.copy(
             entries = updated,
             restAnalysis = restCalculator.calculateRequiredRest(updated)
@@ -162,6 +196,7 @@ class TimeTrackerViewModel(
 
     fun deleteEntry(entryId: String) {
         val updated = uiState.entries.filterNot { it.id == entryId }
+        storage?.saveEntries(updated)
         uiState = uiState.copy(
             entries = updated,
             restAnalysis = restCalculator.calculateRequiredRest(updated)
@@ -176,6 +211,7 @@ class TimeTrackerViewModel(
             uiState.customers + customer
         }
         val nextSelected = uiState.selectedCustomerId.ifBlank { customer.id }
+        storage?.saveCustomers(updated)
         uiState = uiState.copy(
             customers = updated,
             selectedCustomerId = nextSelected
@@ -189,6 +225,7 @@ class TimeTrackerViewModel(
         } else {
             uiState.selectedCustomerId
         }
+        storage?.saveCustomers(updated)
         uiState = uiState.copy(
             customers = updated,
             selectedCustomerId = nextSelected
@@ -196,6 +233,7 @@ class TimeTrackerViewModel(
     }
 
     fun updateUserProfile(profile: UserProfileInfo) {
+        storage?.saveUserProfile(profile)
         uiState = uiState.copy(userProfile = profile)
     }
 
