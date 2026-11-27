@@ -10,14 +10,6 @@ enum class ShiftStatus {
     BREAK
 }
 
-data class UserProfileInfo(
-    val id: String = "default_user",
-    val name: String = "T Nyström Böhm",
-    val email: String = "",
-    val phone: String = "",
-    val address: String = ""
-)
-
 data class ActiveShift(
     val customerId: String,
     val customerName: String,
