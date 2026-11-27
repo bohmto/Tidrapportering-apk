@@ -5,6 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -26,7 +27,22 @@ jobs:
           gradle-version: '8.5'
 
       - name: Build Debug APK
-        run: gradle :app:assembleDebug
+        run: |
+          set -o pipefail
+          for attempt in 1 2 3 4; do
+            echo "=== Build attempt $attempt/4 ==="
+            if gradle :app:assembleDebug --stacktrace; then
+              echo "Build succeeded on attempt $attempt."
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              sleep_sec=$((attempt * 25))
+              echo "Gradle failed (possible 429 rate limit). Sleeping ${sleep_sec}s before retry..."
+              sleep "$sleep_sec"
+            fi
+          done
+          echo "All build attempts failed."
+          exit 1
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
